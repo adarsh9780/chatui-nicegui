@@ -1,5 +1,15 @@
 from nicegui import ui
 
+ui.add_body_html("""
+<style>
+    html, body {
+        overflow: hidden !important;
+        margin: 0;
+        padding: 0;
+    }
+</style>
+""")
+
 
 # Send logic
 def handle_send():
@@ -9,15 +19,13 @@ def handle_send():
 
     # USER MESSAGE: right aligned, narrower, gray bubble
     with chat_column:
-        ui.markdown(text).classes(
-            "self-end bg-gray-100 text-right rounded-md p-3 max-w-[70%]"
-        )
+        ui.markdown(text).classes("self-end bg-gray-100 rounded-md p-3 max-w-[70%]")
     input_box.value = ""
     chat_area.scroll_to(percent=1e6)
 
     # SYSTEM MESSAGE: left aligned, full width, no background
     with chat_column:
-        ui.markdown(text).classes("self-start text-left p-3 w-full")
+        ui.markdown(text).classes("self-start p-3 w-full")
     chat_area.scroll_to(percent=1e6)
 
 
