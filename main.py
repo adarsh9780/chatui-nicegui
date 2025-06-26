@@ -1,44 +1,11 @@
 from nicegui import ui
 
-# State variables
-header_text = ""
-header_label = None
-message_stage = 0  # 0: Welcome, 1: Where should we begin?, 2: Final state
-first_message_sent = False
-
-
-# Typing animation steps
-def animate_typing():
-    global header_text, message_stage
-
-    if message_stage == 0:
-        full_text = "Welcome to CRE-Suite"
-    elif message_stage == 1:
-        full_text = "Where should we begin?"
-    else:
-        header_label.text = "CRE-Suite"
-        return  # stop animation
-
-    if len(header_text) < len(full_text):
-        header_text += full_text[len(header_text)]
-        header_label.text = header_text
-    else:
-        message_stage += 1
-        header_text = ""
-
 
 # Send logic
 def handle_send():
-    global first_message_sent
     text = input_box.value.strip()
     if not text:
         return
-
-    # Stop typing animation after first message
-    if not first_message_sent:
-        first_message_sent = True
-        header_label.text = "CRE-Suite"
-        typing_timer.pause()
 
     with chat_column:
         ui.label(text).classes("self-start bg-gray-100 rounded-md p-3")
@@ -50,17 +17,15 @@ def handle_send():
     chat_area.scroll_to(percent=1e6)
 
 
-# Layout
+# Fullscreen centered layout
 with ui.row().classes("w-full min-h-screen items-center justify-center bg-white"):
     with ui.column().classes("w-full max-w-3xl h-[90vh] justify-between"):
         # Chat card
         with ui.card().classes(
             "w-full flex flex-col flex-grow shadow-sm rounded-xl bg-white"
         ):
-            # Animated Header
-            header_label = ui.label("").classes(
-                "text-2xl text-center text-gray-800 my-4"
-            )
+            # Static header
+            ui.label("CRE-Suite").classes("text-2xl text-center text-gray-800 my-4")
 
             # Scrollable chat area
             with ui.scroll_area().classes(
@@ -68,7 +33,7 @@ with ui.row().classes("w-full min-h-screen items-center justify-center bg-white"
             ) as chat_area:
                 chat_column = ui.column().classes("w-full space-y-3")
 
-            # Input + tools area
+            # Input + tools container
             with ui.element("div").classes(
                 "w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl shadow-inner flex flex-col gap-2"
             ):
@@ -80,6 +45,7 @@ with ui.row().classes("w-full min-h-screen items-center justify-center bg-white"
                     )
                 )
 
+                # Button row inside the container
                 with ui.row().classes("justify-between items-center"):
                     with ui.row().classes("gap-2"):
                         ui.button("View Schema").props("flat dense").classes(
@@ -92,10 +58,7 @@ with ui.row().classes("w-full min-h-screen items-center justify-center bg-white"
                         "flat round dense"
                     ).classes("bg-black text-white")
 
-# Typing animation timer (every 100 ms)
-typing_timer = ui.timer(interval=0.1, callback=animate_typing)
-
-# Stop animation on Enter
+# Handle Enter vs Shift+Enter
 input_box.on(
     "keydown",
     lambda e: handle_send()
