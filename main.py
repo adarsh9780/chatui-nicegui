@@ -93,47 +93,55 @@ def display_structured_output(output: dict):
         if explanation:
             ui.markdown(explanation).classes("self-start p-3 w-full")
 
-        if code:
-            ui.code(code, language="python").classes("self-start p-3 w-full")
+        # Create tabs & store their references
+        with ui.tabs().classes("self-start w-full") as tabs:
+            tab_chart = ui.tab("Chart")
+            tab_table = ui.tab("Table")
+            tab_code = ui.tab("Code")
 
-        if result_df:
-            ui.markdown("**CRE-Suite Result Table (truncated):**").classes(
-                "self-start p-3 w-full"
-            )
-            ui.aggrid(
-                {
-                    "columnDefs": [
-                        {"headerName": k, "field": k} for k in result_df[0].keys()
-                    ],
-                    "rowData": result_df,
-                    "defaultColDef": {
-                        "sortable": True,
-                        "filter": True,
-                        "resizable": True,
-                        "floatingFilter": True,
-                        "flex": 1,
-                    },
-                },
-                theme="quartz",
-            ).classes("h-[400px] w-full")
+        # Link panels to those tabs
+        with ui.tab_panels(tabs, value=tab_chart).classes(
+            "self-start w-full"
+        ) as panels:
+            with ui.tab_panel(tab_chart):
+                if chart_output:
+                    fig = go.Figure(chart_output)
+                    ui.plotly(fig).classes("w-full")
+            with ui.tab_panel(tab_table):
+                if result_df:
+                    ui.aggrid(
+                        {
+                            "columnDefs": [
+                                {"headerName": k, "field": k}
+                                for k in result_df[0].keys()
+                            ],
+                            "rowData": result_df,
+                            "defaultColDef": {
+                                "sortable": True,
+                                "filter": True,
+                                "resizable": True,
+                                "floatingFilter": True,
+                                "flex": 1,
+                            },
+                        },
+                        theme="quartz",
+                    ).classes("h-[400px] w-full")
 
-        if chart_output:
-            fig = go.Figure(chart_output)
-            ui.markdown("**CRE-Suite Chart Output:**").classes("self-start p-3 w-full")
-            ui.plotly(fig)
+                    if base64_output:
+                        decoded = base64.b64decode(base64_output.encode())
 
-        if base64_output:
-            decoded = base64.b64decode(base64_output.encode())
+                        def download_fn():
+                            temp_path = Path(tempfile.gettempdir()) / "output.csv"
+                            with open(temp_path, "wb") as f:
+                                f.write(decoded)
+                            ui.download(temp_path, filename="output.csv")
 
-            def trigger_download():
-                temp_path = Path(tempfile.gettempdir()) / "output.csv"
-                with open(temp_path, "wb") as f:
-                    f.write(decoded)
-                ui.download(temp_path, filename="output.csv")
-
-            ui.button("Download Full Data", on_click=trigger_download).classes(
-                "self-start"
-            )
+                        ui.button("Download Full Data", on_click=download_fn).classes(
+                            "mt-2"
+                        )
+            with ui.tab_panel(tab_code):
+                if code:
+                    ui.code(code, language="python").classes("w-full")
 
 
 # Unified input handler
