@@ -2,6 +2,19 @@ from nicegui import ui
 import httpx
 import asyncio
 
+ui.add_body_html("""
+<style>
+textarea {
+    resize: none !important;
+}
+html, body {
+    overflow: hidden !important;
+    margin: 0;
+    padding: 0;
+}
+</style>
+""")
+
 # Global typing indicator
 typing_label = None
 
