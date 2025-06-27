@@ -8,4 +8,5 @@ dependencies = [
     "nicegui>=2.20.0",
     "pandas>=2.3.0",
     "plotly>=6.2.0",
+    "pywebview>=5.4",
 ]

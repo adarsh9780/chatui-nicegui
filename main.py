@@ -107,6 +107,7 @@ def display_structured_output(output: dict):
                 if chart_output:
                     fig = go.Figure(chart_output)
                     ui.plotly(fig).classes("w-full")
+
             with ui.tab_panel(tab_table):
                 if result_df:
                     ui.aggrid(
@@ -139,6 +140,7 @@ def display_structured_output(output: dict):
                         ui.button("Download Full Data", on_click=download_fn).classes(
                             "mt-2"
                         )
+
             with ui.tab_panel(tab_code):
                 if code:
                     ui.code(code, language="python").classes("w-full")
@@ -201,14 +203,24 @@ with ui.row().classes("w-screen h-screen overflow-hidden justify-center bg-white
                             "w-full text-base bg-transparent focus:outline-none resize-none"
                         )
                     )
-                    with ui.row().classes("justify-end"):
+                    with ui.row().classes("justify-between items-center"):
+                        with ui.row().classes("gap-2"):
+                            ui.button(
+                                icon="schema",
+                                on_click=lambda x: ui.notify("Clicked on View Schema"),
+                            ).props("flat round dense").classes("text-black")
+                            ui.button(
+                                icon="add",
+                                on_click=lambda x: ui.notify("Clicked on New Session"),
+                            ).props("flat round dense").classes("text-black")
                         ui.button(icon="arrow_upward", on_click=handle_send).props(
                             "flat round dense"
                         ).classes("bg-black text-white")
 
                 ui.markdown(
                     "CRE-Suite can make mistakes. Please **verify** important info."
-                ).classes("text-sm text-gray-500 text-center mt-2")
+                ).classes("text-sm text-gray-500 text-center mt-0")
+
 
 input_box.on(
     "keydown",
