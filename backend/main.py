@@ -7,8 +7,8 @@ import base64
 import json
 from plotly.utils import PlotlyJSONEncoder
 import plotly.graph_objects as go
-import uvicorn
 from ui.main import ui
+import asyncio
 
 app = FastAPI()
 
@@ -28,6 +28,7 @@ async def ping():
 
 @app.get("/mock_data")
 async def get_mock_data(ticker: str):
+    await asyncio.sleep(10)
     ticker = ticker.upper()
 
     # Simulate weekly price data

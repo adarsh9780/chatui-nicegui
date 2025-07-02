@@ -24,24 +24,11 @@ html, body {
 """)
 
 
-# # UI route
-# @ui.page("/")
-# async def home():
-#     from httpx import AsyncClient
-
-#     async def call_api():
-#         async with AsyncClient() as client:
-#             resp = await client.get("http://localhost:8000/ping")
-#             ui.notify(resp.json()["message"])
-
-#     ui.button("Ping Backend", on_click=call_api)
-
-
 # Function to simulate full output structure for any user input
 async def generate_mock_output(user_input: str):
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            "http://localhost:8000/mock_data", params={"ticker": user_input}
+            "http://localhost:8000/mock_data", params={"ticker": user_input}, timeout=30
         )
         return response.json()
 
@@ -65,9 +52,7 @@ def display_structured_output(output: dict):
             tab_code = ui.tab("Code")
 
         # Link panels to those tabs
-        with ui.tab_panels(tabs, value=tab_chart).classes(
-            "self-start w-full"
-        ) as panels:
+        with ui.tab_panels(tabs, value=tab_chart).classes("self-start w-full"):
             with ui.tab_panel(tab_chart):
                 if chart_output:
                     fig = go.Figure(chart_output)
@@ -120,6 +105,7 @@ async def handle_send():
 
     input_box.value = ""
 
+    # Display user input
     with chat_column:
         ui.markdown(f"**You:** {user_input}").classes(
             "self-end bg-gray-100 p-3 rounded-md max-w-[70%]"
@@ -127,6 +113,7 @@ async def handle_send():
 
     chat_area.scroll_to(percent=1e6)
 
+    # Show typing spinner
     with chat_column:
         typing_label = ui.row().classes("self-start items-center gap-2 p-3")
         with typing_label:
@@ -135,12 +122,15 @@ async def handle_send():
 
     chat_area.scroll_to(percent=1e6)
 
-    await asyncio.sleep(1)
+    # Wait and get response
+    await asyncio.sleep(0.3)  # simulate small delay
+    output = await generate_mock_output(user_input)
+
+    # Hide spinner only after response is processed
     typing_label.clear()
 
-    output = await generate_mock_output(user_input)
+    # Show output
     display_structured_output(output)
-
     chat_area.scroll_to(percent=1e6)
 
 
