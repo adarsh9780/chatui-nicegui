@@ -89,11 +89,15 @@ def escape_markdown(text: str) -> str:
 
 # Function to simulate full output structure for any user input
 async def generate_mock_output(user_input: str):
+    url = "http://localhost:8000/chat/v2"
+    payload = {"user_query": user_input}
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "http://localhost:8000/mock_data", params={"ticker": user_input}, timeout=30
+        response = await client.post(
+            url, json=payload, timeout=30, headers={"accept": "application/json"}
         )
-        return response.json()
+        response.raise_for_status()
+        output = response.json()
+        return output
 
 
 # Display structured output from JSON

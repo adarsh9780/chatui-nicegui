@@ -1,5 +1,6 @@
 # mock_api.py
 from fastapi import FastAPI
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import random
@@ -26,10 +27,14 @@ async def ping():
     return {"status": "ok"}
 
 
-@app.get("/mock_data")
-async def get_mock_data(ticker: str):
+class ChatRequest(BaseModel):
+    user_query: str
+
+
+@app.post("/chat/v2")
+async def get_mock_data(request: ChatRequest):
     await asyncio.sleep(5)
-    ticker = ticker.upper()
+    ticker = request.user_query.upper()
 
     # Simulate weekly price data
     dates = pd.date_range(end=pd.Timestamp.today(), periods=1000, freq="W")
