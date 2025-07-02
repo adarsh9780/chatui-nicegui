@@ -5,6 +5,7 @@ import base64
 from pathlib import Path
 import tempfile
 import httpx
+import re
 
 
 # Global typing indicator
@@ -12,16 +13,78 @@ typing_label = None
 
 ui.add_body_html("""
 <style>
-textarea {
-    resize: none !important;
+:root {
+  --white-99: hsla(0, 0%, 99%, 1);
+  --mountbatten-pink: hsla(327, 27%, 57%, 1);
+  --dark-slate-gray: hsla(187, 22%, 33%, 1);
+  --sepia: hsla(32, 100%, 18%, 1);
+  --burnt-umber: hsla(7, 53%, 31%, 1);
 }
+
 html, body {
-    overflow: hidden !important;
-    margin: 0;
-    padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  background-color: var(--white-99);
+  color: var(--dark-slate-gray);
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
+}
+
+.markdown-content {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.35;
+  padding: 0.05rem 0.2rem;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  font-weight: 600;
+  margin: 0.4em 0 0.2em;
+}
+
+.markdown-content p {
+  margin: 0.15em 0;
+}
+
+/* INLINE CODE */
+.markdown-content :not(pre) > code {
+  background-color: #f0f2f5;
+  padding: 0px 3px;
+  border-radius: 3px;
+  font-size: 12.5px;
+  font-family: "JetBrains Mono", monospace;
+  color: #3a3a3a;
+}
+
+/* MULTILINE BLOCKS */
+.markdown-content pre {
+  background-color: #f7f7f8;
+  padding: 0.4em 0.6em;
+  border-radius: 5px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  font-family: "JetBrains Mono", monospace;
+  line-height: 1.35;
+  margin: 0.3em 0;
+}
+
+.markdown-content pre code {
+  all: unset;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12.5px;
+  color: #1a1a1a;
 }
 </style>
 """)
+
+
+def escape_markdown(text: str) -> str:
+    return re.sub(r"(?<!\\)_", r"\\_", text)
 
 
 # Function to simulate full output structure for any user input
@@ -36,6 +99,7 @@ async def generate_mock_output(user_input: str):
 # Display structured output from JSON
 def display_structured_output(output: dict):
     explanation = output.get("explanation")
+    # explanation = f"```markdown\n{explanation}\n```"
     code = output.get("code")
     result_df = output.get("result_df", [])
     chart_output = output.get("chart_output")
@@ -43,7 +107,10 @@ def display_structured_output(output: dict):
 
     with chat_column:
         if explanation:
-            ui.markdown(explanation).classes("self-start p-3 w-full")
+            ui.markdown(escape_markdown(explanation)).classes(
+                "markdown-content self-start w-full"
+            )
+            # .classes("self-start p-3 text-gray-500 text-sm")
 
         # Create tabs & store their references
         with ui.tabs().classes("self-start w-full") as tabs:
@@ -140,7 +207,9 @@ with ui.row().classes("w-screen h-screen overflow-hidden justify-center bg-white
         with ui.card().classes(
             "w-full h-full flex flex-col justify-between shadow-sm rounded-xl bg-white"
         ):
-            ui.label("CRE-Suite").classes("text-2xl text-center text-gray-800 pt-2")
+            ui.label("CRE-Suite").classes("text-2xl text-center pt-2").style(
+                "font-family: 'Segoe UI', sans-serif; font-weight: 600; color: var(--mountbatten-pink);"
+            )
 
             with ui.scroll_area().classes("flex-1 overflow-y-auto px-4") as chat_area:
                 chat_column = ui.column().classes("w-full space-y-3")

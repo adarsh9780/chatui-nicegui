@@ -28,7 +28,7 @@ async def ping():
 
 @app.get("/mock_data")
 async def get_mock_data(ticker: str):
-    await asyncio.sleep(10)
+    await asyncio.sleep(5)
     ticker = ticker.upper()
 
     # Simulate weekly price data
@@ -37,7 +37,95 @@ async def get_mock_data(ticker: str):
     df = pd.DataFrame({"date": dates, "price": prices, "symbol": ticker})
     df["date"] = df["date"].dt.strftime("%Y-%m-%d")
 
-    explanation = f"### Data summary for `{ticker}`\nThis table shows simulated weekly price data."
+    explanation = """
+To make your NiceGUI markdown output match the **compact and elegant style like ChatGPT’s**, here’s an optimized CSS style based on the screenshot you shared:
+
+---
+
+### ✅ Updated CSS for `markdown-content`
+
+```html
+<style>
+.markdown-content {
+    font-family: "Inter", "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1f1f1f;
+    padding: 0.2rem 0.4rem;
+    white-space: pre-wrap;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+    font-weight: 600;
+    margin: 0.8em 0 0.4em;
+}
+
+.markdown-content p {
+    margin: 0.4em 0;
+}
+
+.markdown-content code {
+    background-color: #f0f2f5;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: "JetBrains Mono", monospace;
+    color: #444;
+}
+
+.markdown-content pre {
+    background-color: #f7f7f8;
+    border-radius: 6px;
+    padding: 0.8em 1em;
+    overflow: auto;
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0.6em 0;
+}
+</style>
+```
+
+---
+
+### 🧩 Apply this to your app:
+
+In your NiceGUI script:
+
+```python
+ui.add_head_html('''<style>...</style>''')  # insert CSS above
+```
+
+And for each markdown render:
+
+```python
+ui.markdown(escape_markdown(explanation)).classes("markdown-content self-start w-full")
+```
+
+---
+
+### 🔧 Optional helper to escape underscores:
+
+```python
+import re
+
+def escape_markdown(text: str) -> str:
+    return re.sub(r'(?<!\\)_', r'\\_', text)
+```
+
+---
+
+### ✅ Result:
+
+* Text is clean and readable
+* Code blocks are light-gray with small padding
+* Inline code (`like_this`) is distinct but compact
+* Spacing is subtle, similar to ChatGPT output style
+
+Let me know if you want to theme it further (e.g. dark mode, colored headings, etc).
+
+"""
 
     code = f"""
 import pandas as pd
