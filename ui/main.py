@@ -1,13 +1,11 @@
 from nicegui import ui
 import asyncio
-import random
 import plotly.graph_objects as go
-import pandas as pd
 import base64
-import json
-from plotly.utils import PlotlyJSONEncoder
 from pathlib import Path
 import tempfile
+import httpx
+
 
 # Global typing indicator
 typing_label = None
@@ -26,59 +24,26 @@ html, body {
 """)
 
 
+# # UI route
+# @ui.page("/")
+# async def home():
+#     from httpx import AsyncClient
+
+#     async def call_api():
+#         async with AsyncClient() as client:
+#             resp = await client.get("http://localhost:8000/ping")
+#             ui.notify(resp.json()["message"])
+
+#     ui.button("Ping Backend", on_click=call_api)
+
+
 # Function to simulate full output structure for any user input
 async def generate_mock_output(user_input: str):
-    ticker = user_input.upper()
-
-    # Simulate weekly price data
-    dates = pd.date_range(end=pd.Timestamp.today(), periods=1000, freq="W")
-    prices = [round(random.uniform(1, 1000), 2) for _ in range(len(dates))]
-    df = pd.DataFrame({"date": dates, "price": prices, "symbol": ticker})
-
-    # Convert dates to string for JSON serialization
-    df["date"] = df["date"].dt.strftime("%Y-%m-%d")
-
-    explanation = f"### Data summary for `{ticker}`\nThis table shows simulated weekly price data."
-
-    code = f"""
-import pandas as pd
-import random
-
-dates = pd.date_range(end=pd.Timestamp.today(), periods=1000, freq='W')
-prices = [round(random.uniform(1, 1000), 2) for _ in range(len(dates))]
-df = pd.DataFrame({{'date': dates, 'price': prices, 'symbol': '{ticker}'}})
-"""
-
-    # Create chart
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=df["date"].tail(100),
-            y=df["price"].tail(100),
-            mode="lines+markers",
-            name=ticker,
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "http://localhost:8000/mock_data", params={"ticker": user_input}
         )
-    )
-    fig.update_layout(
-        template="plotly_white",
-        title=f"Last 100 Weeks Price Trend - {ticker}",
-        xaxis_title="Date",
-        yaxis_title="Price (USD)",
-        autosize=True,
-    )
-    chart_output = json.loads(json.dumps(fig, cls=PlotlyJSONEncoder))
-
-    # Base64 full CSV
-    csv_bytes = df.to_csv(index=False).encode()
-    base64_output = base64.b64encode(csv_bytes).decode()
-
-    return {
-        "explanation": explanation,
-        "code": code,
-        "result_df": df.head(100).to_dict("records"),
-        "chart_output": chart_output,
-        "base64_output": base64_output,
-    }
+        return response.json()
 
 
 # Display structured output from JSON
@@ -229,4 +194,5 @@ input_box.on(
     else None,
 )
 
-ui.run(port=8000)
+if __name__ == "__main__":
+    ui.run(port=8000)

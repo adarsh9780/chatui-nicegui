@@ -5,8 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "fastapi>=0.115.13",
+    "httpx>=0.28.1",
+    "multidict>=6.5.0",
     "nicegui>=2.20.0",
     "pandas>=2.3.0",
     "plotly>=6.2.0",
     "pywebview>=5.4",
+    "uvicorn>=0.34.3",
 ]
