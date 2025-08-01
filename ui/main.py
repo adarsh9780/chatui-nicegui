@@ -1,261 +1,205 @@
 from nicegui import ui
 import asyncio
-import plotly.graph_objects as go
-import base64
-from pathlib import Path
-import tempfile
-import httpx
-import re
+import os
+
+EXPORT_DIR = "export"
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
+typing_indicator = None
+ASSISTANT_TEXT = "Hello! My name is Chatty. I can't help you. Sorry :)"
 
 
-# Global typing indicator
-typing_label = None
-
-ui.add_body_html("""
-<style>
-:root {
-  --white-99: hsla(0, 0%, 99%, 1);
-  --mountbatten-pink: hsla(327, 27%, 57%, 1);
-  --dark-slate-gray: hsla(187, 22%, 33%, 1);
-  --sepia: hsla(32, 100%, 18%, 1);
-  --burnt-umber: hsla(7, 53%, 31%, 1);
-}
-
-html, body {
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  background-color: var(--white-99);
-  color: var(--dark-slate-gray);
-  margin: 0;
-  padding: 0;
-  overflow: hidden !important;
-}
-
-.markdown-content {
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  line-height: 1.35;
-  padding: 0.05rem 0.2rem;
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-.markdown-content h1,
-.markdown-content h2,
-.markdown-content h3 {
-  font-weight: 600;
-  margin: 0.4em 0 0.2em;
-}
-
-.markdown-content p {
-  margin: 0.15em 0;
-}
-
-/* INLINE CODE */
-.markdown-content :not(pre) > code {
-  background-color: #f0f2f5;
-  padding: 0px 3px;
-  border-radius: 3px;
-  font-size: 12.5px;
-  font-family: "JetBrains Mono", monospace;
-  color: #3a3a3a;
-}
-
-/* MULTILINE BLOCKS */
-.markdown-content pre {
-  background-color: #f7f7f8;
-  padding: 0.4em 0.6em;
-  border-radius: 5px;
-  overflow-x: auto;
-  font-size: 12.5px;
-  font-family: "JetBrains Mono", monospace;
-  line-height: 1.35;
-  margin: 0.3em 0;
-}
-
-.markdown-content pre code {
-  all: unset;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12.5px;
-  color: #1a1a1a;
-}
-</style>
-""")
+def handle_file_upload(file):
+    save_path = os.path.join(EXPORT_DIR, file.name)
+    with open(save_path, "wb") as f:
+        f.write(file.content.read())
+    ui.notify(f"Uploaded to {save_path}")
 
 
-def escape_markdown(text: str) -> str:
-    return re.sub(r"(?<!\\)_", r"\\_", text)
-
-
-# Function to simulate full output structure for any user input
-async def generate_mock_output(user_input: str):
-    url = "http://localhost:8000/chat/v2"
-    payload = {"user_query": user_input}
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            url, json=payload, timeout=30, headers={"accept": "application/json"}
-        )
-        response.raise_for_status()
-        output = response.json()
-        return output
-
-
-# Display structured output from JSON
-def display_structured_output(output: dict):
-    explanation = output.get("explanation")
-    # explanation = f"```markdown\n{explanation}\n```"
-    code = output.get("code")
-    result_df = output.get("result_df", [])
-    chart_output = output.get("chart_output")
-    base64_output = output.get("base64_output")
-
-    with chat_column:
-        if explanation:
-            ui.markdown(escape_markdown(explanation)).classes(
-                "markdown-content self-start w-full"
-            )
-            # .classes("self-start p-3 text-gray-500 text-sm")
-
-        # Create tabs & store their references
-        with ui.tabs().classes("self-start w-full") as tabs:
-            tab_chart = ui.tab("Chart")
-            tab_table = ui.tab("Table")
-            tab_code = ui.tab("Code")
-
-        # Link panels to those tabs
-        with ui.tab_panels(tabs, value=tab_chart).classes("self-start w-full"):
-            with ui.tab_panel(tab_chart):
-                if chart_output:
-                    fig = go.Figure(chart_output)
-                    ui.plotly(fig).classes("w-full")
-
-            with ui.tab_panel(tab_table):
-                if result_df:
-                    ui.aggrid(
-                        {
-                            "columnDefs": [
-                                {"headerName": k, "field": k}
-                                for k in result_df[0].keys()
-                            ],
-                            "rowData": result_df,
-                            "defaultColDef": {
-                                "sortable": True,
-                                "filter": True,
-                                "resizable": True,
-                                "floatingFilter": True,
-                                "flex": 1,
-                            },
-                        },
-                        theme="quartz",
-                    ).classes("h-[400px] w-full")
-
-                    if base64_output:
-                        decoded = base64.b64decode(base64_output.encode())
-
-                        def download_fn():
-                            temp_path = Path(tempfile.gettempdir()) / "output.csv"
-                            with open(temp_path, "wb") as f:
-                                f.write(decoded)
-                            ui.download(temp_path, filename="output.csv")
-
-                        ui.button("Download Full Data", on_click=download_fn).classes(
-                            "mt-2"
-                        )
-
-            with ui.tab_panel(tab_code):
-                if code:
-                    ui.code(code, language="python").classes("w-full")
-
-
-# Unified input handler
 async def handle_send():
-    global typing_label
-    user_input = input_box.value.strip()
-    if not user_input:
+    message = input_box.value.strip()
+    if not message:
         return
-
     input_box.value = ""
 
-    # Display user input
-    with chat_column:
-        ui.markdown(f"**You:** {user_input}").classes(
-            "self-end bg-gray-100 p-3 rounded-md max-w-[70%]"
+    # User message (right-aligned)
+    with chatbox:
+        with ui.row().classes("w-full justify-end"):
+            with ui.element().classes("max-w-lg"):
+                ui.markdown(message).classes(
+                    "bg-blue-100 text-blue-900 px-4 py-2 rounded-xl text-sm"
+                )
+    chatbox.scroll_to(percent=1e6)
+
+    global typing_indicator
+    try:
+        # Typing animation (left-aligned)
+        with chatbox:
+            typing_indicator = ui.row().classes(
+                "w-full justify-start items-center gap-2"
+            )
+            with typing_indicator:
+                ui.spinner(size="sm")
+                ui.label("Assistant is typing...").classes("text-sm text-gray-500")
+        chatbox.scroll_to(percent=1e6)
+
+        await asyncio.sleep(1.5)
+        typing_indicator.delete()
+
+        # Assistant message (left-aligned)
+        with chatbox:
+            with ui.row().classes("w-full justify-start"):
+                with ui.element().classes("max-w-lg"):
+                    ui.markdown(ASSISTANT_TEXT).classes(
+                        "bg-gray-100 text-gray-800 px-4 py-2 rounded-xl text-sm"
+                    )
+        chatbox.scroll_to(percent=1e6)
+
+    except Exception as e:
+        if typing_indicator:
+            typing_indicator.delete()
+        with chatbox:
+            with ui.row().classes("w-full justify-start"):
+                with ui.element().classes("max-w-lg"):
+                    ui.markdown(f"**Assistant (Error):** {e}").classes(
+                        "bg-red-100 text-red-800 px-4 py-2 rounded-xl text-sm"
+                    )
+
+
+# --- API KEY DIALOG ---
+api_dialog = ui.dialog().classes("w-full max-w-md")
+
+with api_dialog:
+    with ui.card().classes("w-full"):
+        ui.label("🔐 API Configuration").classes("text-lg font-semibold mb-2")
+
+        with ui.tabs().classes("w-full") as tabs:
+            tab_gemini = ui.tab("Google Gemini")
+            tab_openai = ui.tab("OpenAI")
+
+        with ui.tab_panels(tabs, value=tab_openai).classes("w-full"):
+            with ui.tab_panel(tab_gemini):
+                ui.input("Enter your Google Gemini API key").props(
+                    "type=password"
+                ).classes("w-full")
+
+            with ui.tab_panel(tab_openai):
+                ui.input("Enter your OpenAI API key").props("type=password").classes(
+                    "w-full"
+                )
+
+        ui.label(
+            "Privacy Notice: Your API keys are stored locally in your browser and never shared."
+        ).classes("text-xs text-gray-600 mt-4")
+
+        with ui.row().classes("justify-end mt-4"):
+            ui.button("Cancel", on_click=api_dialog.close).props("flat color=gray")
+            ui.button(
+                "Save Configuration",
+                on_click=lambda: ui.notify("Configuration Saved ✅"),
+            ).props("color=primary")
+
+
+# --- DB SELECTION DIALOG ---
+db_dialog = ui.dialog().classes("w-full max-w-md")
+
+with db_dialog:
+    with ui.card().classes("w-full"):
+        ui.label("📁 Select Database and Schema Directory").classes(
+            "text-lg font-semibold mb-4"
         )
 
-    chat_area.scroll_to(percent=1e6)
+        db_path_label = ui.label("No database selected").classes(
+            "text-sm text-gray-600"
+        )
+        schema_path_label = ui.label("No schema selected").classes(
+            "text-sm text-gray-600"
+        )
 
-    # Show typing spinner
-    with chat_column:
-        typing_label = ui.row().classes("self-start items-center gap-2 p-3")
-        with typing_label:
-            ui.spinner(size="sm")
-            ui.label("CRE-Suite is thinking...").classes("text-gray-500 text-sm")
+        def handle_db_upload(file):
+            db_path_label.text = f"📦 DB selected: {file.name}"
+            # Optionally save path or file content
 
-    chat_area.scroll_to(percent=1e6)
+        def handle_schema_upload(file):
+            schema_path_label.text = f"📘 Schema selected: {file.name}"
 
-    # Wait and get response
-    await asyncio.sleep(0.3)  # simulate small delay
-    output = await generate_mock_output(user_input)
+        ui.upload(on_upload=handle_db_upload, label="Upload .db file").classes("w-full")
+        ui.upload(on_upload=handle_schema_upload, label="Upload .json schema").classes(
+            "w-full mt-2"
+        )
 
-    # Hide spinner only after response is processed
-    typing_label.clear()
-
-    # Show output
-    display_structured_output(output)
-    chat_area.scroll_to(percent=1e6)
-
-
-# UI Layout
-with ui.row().classes("w-screen h-screen overflow-hidden justify-center bg-white"):
-    with ui.column().classes("w-full max-w-4xl h-full"):
-        with ui.card().classes(
-            "w-full h-full flex flex-col justify-between shadow-sm rounded-xl bg-white"
-        ):
-            ui.label("CRE-Suite").classes("text-2xl text-center pt-2").style(
-                "font-family: 'Segoe UI', sans-serif; font-weight: 600; color: var(--mountbatten-pink);"
+        with ui.row().classes("justify-end mt-4"):
+            ui.button("Cancel", on_click=db_dialog.close).props("flat color=gray")
+            ui.button("Connect", on_click=lambda: ui.notify("Paths saved ✅")).props(
+                "color=primary"
             )
 
-            with ui.scroll_area().classes("flex-1 overflow-y-auto px-4") as chat_area:
-                chat_column = ui.column().classes("w-full space-y-3")
 
-            with ui.column().classes("w-full px-4 pb-2"):
-                with ui.element("div").classes(
-                    "w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl shadow-inner flex flex-col gap-2"
-                ):
-                    input_box = (
-                        ui.textarea(
-                            placeholder="Type a stock ticker like 'AAPL', 'GOOGL', or anything..."
+# --- UI Layout ---
+with ui.column().classes("w-screen h-screen bg-gray-50 text-black"):
+    # Header
+    with ui.row().classes(
+        "w-full bg-white shadow-md px-6 py-3 justify-between items-center"
+    ):
+        ui.label("💬 Chat Assistant").classes("text-xl font-semibold")
+        with ui.row().classes("gap-3"):
+            ui.button("View Schema").props("outline")
+            ui.button("View Data").props("outline")
+            ui.button("Select DB", on_click=db_dialog.open).props("outline")
+            ui.button("Set API Key", on_click=api_dialog.open).props("outline")
+
+    # Main Section
+    with ui.row().classes("flex-1 w-full h-full p-4 gap-4"):
+        # Chat Column
+        with ui.column().classes("flex-1 h-full w-full"):
+            with ui.card().classes(
+                "flex flex-col h-full w-full rounded-2xl shadow-sm bg-white"
+            ):
+                global chatbox
+                chatbox = ui.scroll_area().classes(
+                    "w-full flex-1 p-4 space-y-4 overflow-y-auto"
+                )
+
+                # 🧠 Compact input + send row
+                with ui.column().classes("w-full border-t border-gray-200 p-3 gap-1"):
+                    with ui.row().classes("w-full items-center gap-2"):
+                        global input_box
+                        input_box = (
+                            ui.input(
+                                placeholder="Talk to your data... (e.g., 'Show me all customers from New York')"
+                            )
+                            .props("borderless")
+                            .classes(
+                                "flex-grow bg-gray-100 text-sm px-4 h-[50px] rounded-full leading-none"
+                            )
                         )
-                        .props("auto-grow rows=1")
-                        .classes(
-                            "w-full text-base bg-transparent focus:outline-none resize-none"
+
+                        (
+                            ui.button(icon="send")
+                            .props("color=primary flat")
+                            .classes(
+                                "rounded-full h-[40px] w-[40px] flex items-center justify-center"
+                            )
+                            .on("click", lambda: asyncio.create_task(handle_send()))
                         )
+
+                    # Hint below the row
+                    ui.label("Press Enter to send, Shift+Enter for new line").classes(
+                        "text-xs text-gray-500 ml-1"
                     )
-                    with ui.row().classes("justify-between items-center"):
-                        with ui.row().classes("gap-2"):
-                            ui.button(
-                                icon="schema",
-                                on_click=lambda x: ui.notify("Clicked on View Schema"),
-                            ).props("flat round dense").classes("text-black")
-                            ui.button(
-                                icon="add",
-                                on_click=lambda x: ui.notify("Clicked on New Session"),
-                            ).props("flat round dense").classes("text-black")
-                        ui.button(icon="arrow_upward", on_click=handle_send).props(
-                            "flat round dense"
-                        ).classes("bg-black text-white")
 
-                ui.markdown(
-                    "CRE-Suite can make mistakes. Please **verify** important info."
-                ).classes("text-sm text-gray-500 text-center mt-0")
+        # Right Panel
+        with ui.card().classes("flex-1 h-full p-4 rounded-2xl shadow-sm bg-white"):
+            ui.label("📊 Insights / Tools").classes("text-lg font-semibold")
+            ui.separator()
+            ui.label("You can add helpful tools or summaries here.")
 
-
+# Send on Enter
 input_box.on(
     "keydown",
-    lambda e: handle_send()
+    lambda e: asyncio.create_task(handle_send())
     if e.args.get("key") == "Enter" and not e.args.get("shiftKey", False)
     else None,
 )
 
-if __name__ == "__main__":
-    ui.run(port=8000)
+ui.run()

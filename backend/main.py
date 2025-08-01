@@ -8,7 +8,7 @@ import base64
 import json
 from plotly.utils import PlotlyJSONEncoder
 import plotly.graph_objects as go
-from ui.main import ui
+from ui.ui1 import ui
 import asyncio
 
 app = FastAPI()
